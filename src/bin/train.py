@@ -1,9 +1,10 @@
 """Train the model"""
 
 import torch
-from torch import nn, optim
-from src.data import DataModule, BaseDataset
-from src.data.transforms import train_transform, inference_transform
+from typing import Callable
+from torch import nn
+from src.data import DataModule, MNISTDataset
+from src.data.transforms import DataTransform
 from src.logging import TerminalLogger, get_pylogger
 from src.callbacks import (
     LoadModelCheckpoint,
@@ -11,107 +12,144 @@ from src.callbacks import (
     MetricsSaverCallback,
     ModelSummary,
     SaveModelCheckpoint,
+    GeneratorExamplesPlotterCallback,
 )
+from src.model.architectures import (
+    GANGenerator,
+    GANDiscriminator,
+    DCGANGenerator,
+    DCGANDiscriminator,
+)
+from src.model.gan import GANModel
 
-from src.model.model.base import BaseModel
-from src.model.loss import BaseLoss, WeightedLoss
-from src.model.module import Trainer, BaseModule
-from src.model.metrics import BaseMetrics, BaseMetric
+from src.model.loss import GANLoss, WeightedLoss
+from src.model.module import Trainer, GANModule
 from src.model.utils import seed_everything
 
 from src.utils import DS_ROOT, NOW, ROOT
 
 log = get_pylogger(__name__)
 
-EXPERIMENT_NAME = "watermak_bbox_localizer"
+EXPERIMENT_NAME = "test"
 
-CONFIG = {
+CFG = {
     "seed": 42,
-    "dataset": "<ds_name>",
-    "input_size": (32, 3, 256, 256),
+    "dataset": "MNIST",
+    "latent_dim": 100,
+    "image_size": (image_size := 28),
+    "image_channels": 1,
+    "transform": {"mean": 0.5, "std": 0.5, "image_size": image_size},
     "max_epochs": 500,
-    "batch_size": 48,
+    "batch_size": 128,
     "device": "cuda",
-    "loss_weights": {"loss": 1.0},
-    # "ckpt_path": "/home/tomhaw/nn-watermarks/results/watermark_test/13-09-2023_07:39:52/checkpoints/last.pt",
     "limit_batches": -1,
+    "gan_type": "gan",
 }
 
-if CONFIG["limit_batches"] != -1:
+CFG["image_shape"] = (CFG["image_channels"], CFG["image_size"], CFG["image_size"])
+CFG["input_size"] = (1, CFG["latent_dim"])
+
+if CFG["limit_batches"] != -1:
     EXPERIMENT_NAME = "debug"
 
-RUN_NAME = f"{NOW}"
-CONFIG["logs_path"] = str(ROOT / "results" / EXPERIMENT_NAME / RUN_NAME)
+RUN_NAME = f"{CFG['gan_type']}_{NOW}"
+CFG["logs_path"] = str(ROOT / "results" / EXPERIMENT_NAME / RUN_NAME)
 
 
-def create_datamodule() -> DataModule:
-    tr_transform = train_transform(CONFIG["image_size"], CONFIG["image_size"])
-    val_transform = inference_transform(CONFIG["image_size"])
-
-    ds_path = str(DS_ROOT / CONFIG["dataset"])
-    train_ds = BaseDataset(ds_path, "trainaug", tr_transform)
-    val_ds = BaseDataset(ds_path, "val", val_transform)
-
-    return DataModule(
-        train_ds=train_ds, val_ds=val_ds, test_ds=None, batch_size=CONFIG["batch_size"]
-    )
+def weights_init(model):
+    classname = model.__class__.__name__
+    if classname.find("Conv") != -1:
+        nn.init.normal_(model.weight.data, 0.0, 0.02)
+    elif classname.find("BatchNorm") != -1:
+        nn.init.normal_(model.weight.data, 1.0, 0.02)
+        nn.init.constant_(model.bias.data, 0)
 
 
-def create_model() -> BaseModel:
-    net = nn.Identity()
-    return BaseModel(
-        net=net, input_size=CONFIG["input_size"], input_names=["images"], output_names=["output"]
-    )
+def create_datamodule(
+    ds_path: str,
+    train_transform: DataTransform,
+    inference_transform: DataTransform,
+    batch_size: int,
+) -> DataModule:
+    train_ds = MNISTDataset(ds_path, "train", train_transform)
+    val_ds = MNISTDataset(ds_path, "test", inference_transform)
+    return DataModule(train_ds=train_ds, val_ds=val_ds, test_ds=None, batch_size=batch_size)
 
 
-def create_loss_fn() -> BaseLoss:
-    loss_fn = WeightedLoss(nn.MSELoss(), weight=CONFIG["loss_weights"]["loss"])
-    return BaseLoss(loss_fn)
-
-
-def create_callbacks(logger) -> list:
+def create_callbacks(
+    logger, inverse_preprocessing: Callable, input_size: tuple[int, ...], ckpt_path: str | None
+) -> list:
     ckpt_saver_params = dict(ckpt_dir=logger.ckpt_dir, stage="val", mode="min")
     summary_filepath = str(logger.model_dir / "model_summary.txt")
+    metrics_plot_path = str(logger.log_path / "metrics.jpg")
+    metrics_yaml_path = str(logger.log_path / "metrics.yaml")
+    val_examples_path = str(logger.log_path / "val_examples")
+    train_examples_path = str(logger.log_path / "train_examples")
     callbacks = [
-        MetricsPlotterCallback(str(logger.log_path / "metrics.jpg")),
-        MetricsSaverCallback(str(logger.log_path / "metrics.yaml")),
-        ModelSummary(input_size=CONFIG["input_size"], depth=4, filepath=summary_filepath),
-        SaveModelCheckpoint(name="best_G", metric="enc_dec_loss", **ckpt_saver_params),
-        SaveModelCheckpoint(name="best_D", metric="disc_loss", **ckpt_saver_params),
+        MetricsPlotterCallback(metrics_plot_path),
+        MetricsSaverCallback(metrics_yaml_path),
+        ModelSummary(input_size=input_size, depth=4, filepath=summary_filepath),
+        SaveModelCheckpoint(name="best_G", metric="G_loss", **ckpt_saver_params),
+        SaveModelCheckpoint(name="best_D", metric="D_loss", **ckpt_saver_params),
         SaveModelCheckpoint(name="last", last=True, top_k=0, **ckpt_saver_params),
+        GeneratorExamplesPlotterCallback("val", val_examples_path, inverse_preprocessing),
+        GeneratorExamplesPlotterCallback("train", train_examples_path, inverse_preprocessing),
     ]
-    if "ckpt_path" in CONFIG and CONFIG["ckpt_path"] is not None:
-        callbacks.append(LoadModelCheckpoint(CONFIG["ckpt_path"]))
+    if ckpt_path is not None:
+        callbacks.append(LoadModelCheckpoint(ckpt_path))
     return callbacks
 
 
-def main() -> None:
-    seed_everything(CONFIG["seed"])
-    torch.set_float32_matmul_precision("medium")
+def create_gan_model(latent_dim: int, image_shape: tuple[int, ...]) -> GANModel:
+    generator = GANGenerator(latent_dim, image_shape)
+    discriminator = GANDiscriminator(image_shape)
+    return GANModel(generator, discriminator)
 
-    datamodule = create_datamodule()
-    model = create_model()
-    loss_fn = create_loss_fn()
-    logger = TerminalLogger(CONFIG["logs_path"], config=CONFIG)
-    callbacks = create_callbacks(logger)
-    optimizers = {
-        "optim_0": optim.SGD(model.parameters(), lr=CONFIG["lr"], momentum=1e-4, nesterov=True)
-    }
-    module = BaseModule(
-        model=model,
-        loss_fn=loss_fn,
-        metrics=BaseMetrics([BaseMetric()]),
-        optimizers=optimizers,
-        schedulers={},
+
+def create_dcgan_model(latent_dim: int, image_shape: tuple[int, ...]) -> GANModel:
+    mid_channels = 64
+    img_channels = image_shape[0]
+    generator = DCGANGenerator(latent_dim, mid_channels, img_channels)
+    discriminator = DCGANDiscriminator(img_channels, mid_channels, input_size=image_shape)
+    return GANModel(generator, discriminator)
+
+
+def main() -> None:
+    seed_everything(CFG["seed"])
+    torch.set_float32_matmul_precision("medium")
+    ds_path = str(DS_ROOT / CFG["dataset"])
+    train_transform = DataTransform(is_train=True, **CFG["transform"])
+    inference_transform = DataTransform(is_train=False, **CFG["transform"])
+
+    datamodule = create_datamodule(ds_path, train_transform, inference_transform, CFG["batch_size"])
+
+    if CFG["gan_type"] == "gan":
+        create_model = create_gan_model
+    elif CFG["gan_type"] == "dcgan":
+        create_model = create_dcgan_model
+    else:
+        raise ValueError()
+
+    model = create_model(CFG["latent_dim"], CFG["image_shape"])
+    model.apply(weights_init)
+
+    module = GANModule(model=model, loss_fn=GANLoss(WeightedLoss(nn.BCELoss())))
+
+    logger = TerminalLogger(CFG["logs_path"], config=CFG)
+
+    callbacks = create_callbacks(
+        logger,
+        train_transform.inverse_preprocessing,
+        CFG["input_size"],
+        CFG.get("ckpt_path", None),
     )
-    logger.log_config()
 
     trainer = Trainer(
         logger=logger,
-        device=CONFIG["device"],
+        device=CFG["device"],
         callbacks=callbacks,
-        max_epochs=CONFIG["max_epochs"],
-        limit_batches=CONFIG["limit_batches"],
+        max_epochs=CFG["max_epochs"],
+        limit_batches=CFG["limit_batches"],
     )
     trainer.fit(module, datamodule)
 

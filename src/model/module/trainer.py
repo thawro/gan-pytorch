@@ -8,7 +8,7 @@ from src.model.utils import save_checkpoint
 
 log = get_pylogger(__name__)
 
-from src.model.module.base_module import BaseModule
+from src.model.module.base import BaseModule
 from src.callbacks import BaseCallback, Callbacks
 
 

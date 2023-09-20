@@ -7,9 +7,9 @@ from src.data.datamodule import DataModule
 from src.logging import get_pylogger
 from src.logging.loggers import BaseLogger
 from src.metrics import MetricsStorage, Result
-from src.model.model import BaseModel
+from src.model.architectures.base import BaseModel
 from src.model.loss import BaseLoss
-from src.model.metrics import BaseMetrics
+from src.model.metrics import GANMetrics
 
 from src.callbacks import Callbacks
 
@@ -29,7 +29,7 @@ class BaseModule:
         self,
         model: BaseModel,
         loss_fn: BaseLoss,
-        metrics: BaseMetrics,
+        metrics: GANMetrics,
         optimizers: dict[str, torch.optim.Optimizer],
         schedulers: dict[str, torch.optim.lr_scheduler.LRScheduler] = {},
     ):
@@ -53,6 +53,7 @@ class BaseModule:
         self.logger = logger
         self.callbacks = callbacks
         self.datamodule = datamodule
+        self.total_batches = datamodule.total_batches
         self.device = device
 
     def set_attributes(self, **attributes):
@@ -89,7 +90,7 @@ class BaseModule:
         )
         return model_state
 
-    def _common_step(self, batch: tuple[Tensor, Tensor, Tensor], batch_idx: int, stage: str):
+    def _common_step(self, batch: tuple[Tensor, Tensor], batch_idx: int, stage: str):
         data, y_true = batch
         y_pred = self.model(data)
         loss = self.loss_fn(y_pred, y_true)
@@ -117,10 +118,10 @@ class BaseModule:
                 )
                 self.results[stage].append(result)
 
-    def training_step(self, batch: tuple[Tensor, Tensor, Tensor], batch_idx: int):
+    def training_step(self, batch: tuple[Tensor, Tensor], batch_idx: int):
         self._common_step(batch, batch_idx, "train")
 
-    def validation_step(self, batch: tuple[Tensor, Tensor, Tensor], batch_idx: int):
+    def validation_step(self, batch: tuple[Tensor, Tensor], batch_idx: int):
         with torch.no_grad():
             self._common_step(batch, batch_idx, "val")
 

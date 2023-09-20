@@ -7,8 +7,7 @@ from typing import Any, Literal
 import mlflow
 import yaml
 from torch import Tensor
-from src.model.model import BaseModel
-
+from src.model.architectures.base import BaseModel
 from .pylogger import get_pylogger
 
 log = get_pylogger(__name__)
@@ -54,6 +53,7 @@ class BaseLogger:
         self.model_dir = self.log_path / "model"
         self.model_dir.mkdir(parents=True, exist_ok=True)
         self.results = LoggerResults(config=config)
+        self.log_config()
 
     def log_hyperparams(self, params: dict) -> None:
         """Log hyperparameters as params."""

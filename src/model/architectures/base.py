@@ -1,7 +1,8 @@
-from torch import Tensor, nn
+from torch import Tensor, nn, optim
 import torch
 from torchinfo import summary
 from src.utils.files import save_txt_to_file
+from abc import abstractmethod
 
 
 class BaseModel(nn.Module):
@@ -57,3 +58,24 @@ class BaseModel(nn.Module):
         if filepath is not None:
             save_txt_to_file(layers_description, filepath)
         return layers_description
+
+
+class Generator(BaseModel):
+    def __init__(self, net: nn.Module, input_size: tuple[int, ...]):
+        input_names = ["noise"]
+        output_names = ["image"]
+        super().__init__(net, input_size, input_names, output_names)
+
+    def forward(self, z: Tensor) -> Tensor:
+        return self.net(z)
+
+
+class Discriminator(BaseModel):
+    def __init__(self, net: nn.Module, input_size: tuple[int, ...]):
+        input_names = ["image"]
+        output_names = ["validity"]
+        super().__init__(net, input_size, input_names, output_names)
+
+    def forward(self, images: Tensor) -> Tensor:
+        validity = self.net(images)
+        return validity

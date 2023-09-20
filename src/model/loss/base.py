@@ -5,7 +5,7 @@ from torch.nn.modules.loss import _Loss
 
 
 class WeightedLoss(_Loss):
-    def __init__(self, criterion: _Loss, weight: float):
+    def __init__(self, criterion: _Loss, weight: float = 1):
         super().__init__()
         self.criterion = criterion
         self.weight = weight

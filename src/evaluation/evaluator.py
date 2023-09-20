@@ -2,7 +2,7 @@
 
 import albumentations as A
 import torch
-from src.model.model import BaseModel
+from src.model.components import BaseModel
 
 
 class BaseEvaluator:
