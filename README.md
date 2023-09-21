@@ -17,7 +17,7 @@ Simple GAN based on [Generative Adversarial Nets](https://arxiv.org/abs/1406.266
 ![gan_metrics](./plots/gan/metrics.jpg)
 
 ### Examples of generated images in each epoch
-![gan_examples](./plots/gan/examples.mp4)
+https://github.com/thawro/gan-pytorch/assets/50373360/c420da6a-f517-4e50-b123-f59d317e164b
 
 
 ## DCGAN
