@@ -45,6 +45,8 @@ https://github.com/thawro/gan-pytorch/assets/50373360/79e9d0b0-c291-4d47-835b-19
 ![gan_metrics](./plots/CelebA/gan/metrics.jpg)
 
 #### Generated examples
+https://github.com/thawro/gan-pytorch/assets/50373360/f91a2ecc-2434-4f1c-8312-17283d5ed4b0
+
 
 
 ## DCGAN
@@ -53,3 +55,5 @@ https://github.com/thawro/gan-pytorch/assets/50373360/79e9d0b0-c291-4d47-835b-19
 ![gan_metrics](./plots/CelebA/dcgan/metrics.jpg)
 
 #### Generated examples
+https://github.com/thawro/gan-pytorch/assets/50373360/f9931527-45ec-4cf9-9c3f-a8e48eebe62a
+
