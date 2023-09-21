@@ -4,7 +4,7 @@ import torch
 from functools import partial
 
 from torch import nn
-from src.data import DataModule, MNISTDataset
+from src.data import DataModule, MNISTDataset, CelebADataset
 from src.data.transforms import DataTransform
 from src.logging import TerminalLogger, get_pylogger
 from src.callbacks import (
@@ -33,22 +33,24 @@ from src.utils import DS_ROOT, NOW, ROOT
 
 log = get_pylogger(__name__)
 
-EXPERIMENT_NAME = "test"
 
 CFG = {
     "seed": 42,
-    "dataset": "MNIST",
+    "dataset": "CelebA",
     "latent_dim": 100,
     "image_size": (image_size := 64),
-    "image_channels": 1,
     "transform": {"mean": 0.5, "std": 0.5, "image_size": image_size},
     "max_epochs": 500,
     "batch_size": 100,
     "device": "cuda",
     "limit_batches": -1,
-    "gan_type": "conditional_dcgan",
     "n_classes": 10,
+    "gan_type": "gan",
 }
+if CFG["dataset"] == "MNIST":
+    CFG["image_channels"] = 1
+else:
+    CFG["image_channels"] = 3
 
 CFG["image_shape"] = (CFG["image_channels"], CFG["image_size"], CFG["image_size"])
 
@@ -61,7 +63,7 @@ if CFG["limit_batches"] != -1:
     EXPERIMENT_NAME = "debug"
 
 RUN_NAME = f"{CFG['gan_type']}/{NOW}"
-CFG["logs_path"] = str(ROOT / "results" / EXPERIMENT_NAME / RUN_NAME)
+CFG["logs_path"] = str(ROOT / "results" / CFG["dataset"] / RUN_NAME)
 
 
 def weights_init(model):
@@ -79,8 +81,12 @@ def create_datamodule(
     inference_transform: DataTransform,
     batch_size: int,
 ) -> DataModule:
-    train_ds = MNISTDataset(ds_path, "train", train_transform)
-    val_ds = MNISTDataset(ds_path, "test", inference_transform)
+    if CFG["dataset"] == "MNIST":
+        Dataset = MNISTDataset
+    else:
+        Dataset = CelebADataset
+    train_ds = Dataset(ds_path, "train", train_transform)
+    val_ds = Dataset(ds_path, "test", inference_transform)
     return DataModule(train_ds=train_ds, val_ds=val_ds, test_ds=None, batch_size=batch_size)
 
 
@@ -133,21 +139,29 @@ def create_conditional_dcgan_model(
     return ConditionalGANModel(generator, discriminator)
 
 
+type2params = {
+    "gan": {
+        "create_model": create_gan_model,
+        "module": GANModule,
+    },
+    "dcgan": {
+        "create_model": create_dcgan_model,
+        "module": GANModule,
+    },
+    "conditional_dcgan": {
+        "create_model": partial(create_conditional_dcgan_model, n_classes=CFG["n_classes"]),
+        "module": GANModule,
+    },
+}
+
+
 def create_module(
     gan_type: str, latent_dim: int, image_shape: tuple[int, ...]
 ) -> GANModule | ConditionalGANModule:
-    if gan_type == "gan":
-        create_model = create_gan_model
-        Module = GANModule
-    elif gan_type == "dcgan":
-        create_model = create_dcgan_model
-        Module = GANModule
-    elif gan_type == "conditional_dcgan":
-        create_model = partial(create_conditional_dcgan_model, n_classes=CFG["n_classes"])
-        Module = ConditionalGANModule
-    model = create_model(latent_dim, image_shape)
+    params = type2params[gan_type]
+    model = params["create_model"](latent_dim, image_shape)
     model.apply(weights_init)
-    return Module(model, loss_fn=GANLoss(WeightedLoss(nn.BCELoss())))
+    return params["module"](model, loss_fn=GANLoss(WeightedLoss(nn.BCELoss())))
 
 
 def main() -> None:

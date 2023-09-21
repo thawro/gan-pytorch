@@ -1,5 +1,5 @@
 """Implementation of specialized Module"""
-from .base import BaseModule, SPLITS
+from .gan import GANModule, SPLITS
 from torch import Tensor, optim
 from src.model.gan import ConditionalGANModel
 from src.model.loss.gan import GANLoss
@@ -8,22 +8,11 @@ from src.model.metrics import GANMetrics
 from src.metrics.results import GANResult
 
 
-class ConditionalGANModule(BaseModule):
+class ConditionalGANModule(GANModule):
     model: ConditionalGANModel
     loss_fn: GANLoss
     metrics: GANMetrics
     results: dict[str, GANResult]
-
-    def __init__(self, model: ConditionalGANModel, loss_fn: GANLoss):
-        optimizers = {
-            "generator": optim.Adam(model.generator.parameters(), lr=2e-4, betas=(0.5, 0.999)),
-            "discriminator": optim.Adam(
-                model.discriminator.parameters(), lr=2e-4, betas=(0.5, 0.999)
-            ),
-        }
-        metrics = GANMetrics()
-        super().__init__(model, loss_fn, metrics, optimizers, schedulers={})
-        self.results = {split: None for split in SPLITS}
 
     def _common_step(self, batch: Tensor, batch_idx: int, stage: str):
         if stage == "train":

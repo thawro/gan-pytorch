@@ -1,2 +1,2 @@
 from src.data.datamodule import DataModule
-from src.data.dataset import BaseDataset, MNISTDataset
+from src.data.dataset import BaseDataset, MNISTDataset, CelebADataset

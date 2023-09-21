@@ -28,8 +28,7 @@ class GANModule(BaseModule):
     def _common_step(self, batch: Tensor, batch_idx: int, stage: str):
         if stage == "train":
             self.optimizers["discriminator"].zero_grad()
-
-        real_imgs, _ = batch
+        real_imgs, *_ = batch
         device = real_imgs.device
         N, C, H, W = real_imgs.shape
         valid_label = torch.full((N,), 1.0, dtype=torch.float, device=device)
