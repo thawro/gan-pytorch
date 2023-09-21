@@ -13,7 +13,7 @@ class GANGenerator(Generator):
         flat_img_size = int(np.prod(output_size))
 
         net = nn.Sequential(
-            *self.make_block(latent_dim, 128, normalize=False),
+            *self.make_block(latent_dim, 128),
             *self.make_block(128, 256),
             *self.make_block(256, 512),
             *self.make_block(512, 1024),
@@ -24,12 +24,12 @@ class GANGenerator(Generator):
         super().__init__(net, input_size)
         self.output_size = output_size
 
-    def make_block(self, in_feats: int, out_feats: int, normalize: bool = True):
-        layers: list[nn.Module] = [nn.Linear(in_feats, out_feats)]
-        if normalize:
-            layers.append(nn.BatchNorm1d(out_feats, 0.8))
-        layers.append(nn.LeakyReLU(0.2, inplace=True))
-        return layers
+    def make_block(self, in_feats: int, out_feats: int):
+        return [
+            nn.Linear(in_feats, out_feats),
+            nn.BatchNorm1d(out_feats, 0.8),
+            nn.LeakyReLU(0.2, inplace=True),
+        ]
 
     def forward(self, z: Tensor) -> Tensor:
         N, *_ = z.shape

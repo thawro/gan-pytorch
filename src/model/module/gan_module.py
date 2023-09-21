@@ -73,12 +73,7 @@ class GANModule(BaseModule):
         self.steps_metrics_storage.append(losses, stage)
 
         metrics = self.metrics.calculate_metrics(
-            G_fake_validity=G_fake_validity,
-            G_fake_target=valid_label,
-            D_fake_validity=D_fake_validity,
-            D_fake_target=fake_label,
-            D_real_validity=D_real_validity,
-            D_real_target=valid_label,
+            D_fake_validity=D_fake_validity, D_real_validity=D_real_validity
         )
         self.steps_metrics_storage.append(metrics, stage)
 

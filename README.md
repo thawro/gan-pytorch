@@ -16,8 +16,8 @@ Simple GAN based on [Generative Adversarial Nets](https://arxiv.org/abs/1406.266
 ### Learning curves
 ![gan_metrics](./plots/gan/metrics.jpg)
 
-### Examples of generated images
-![gan_examples](./plots/gan/examples.png)
+### Examples of generated images in each epoch
+![gan_examples](./plots/gan/examples.mp4)
 
 
 ## DCGAN

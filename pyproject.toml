@@ -29,6 +29,7 @@ ipywidgets = "^8.1.0"
 ipykernel = "^6.25.1"
 opencv-python = "^4.8.0.76"
 kornia = "^0.7.0"
+moviepy = "^1.0.3"
 
 
 [tool.poetry.group.dev.dependencies]

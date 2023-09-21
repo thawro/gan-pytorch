@@ -77,14 +77,14 @@ def create_datamodule(
 
 
 def create_callbacks(
-    logger, inverse_preprocessing: Callable, input_size: tuple[int, ...], ckpt_path: str | None
+    logger: TerminalLogger, input_size: tuple[int, ...], ckpt_path: str | None
 ) -> list:
     ckpt_saver_params = dict(ckpt_dir=logger.ckpt_dir, stage="val", mode="min")
     summary_filepath = str(logger.model_dir / "model_summary.txt")
     metrics_plot_path = str(logger.log_path / "metrics.jpg")
     metrics_yaml_path = str(logger.log_path / "metrics.yaml")
-    val_examples_path = str(logger.log_path / "val_examples")
-    train_examples_path = str(logger.log_path / "train_examples")
+    examples_dirpath = logger.log_path / "examples"
+    examples_dirpath.mkdir(exist_ok=True, parents=True)
     callbacks = [
         MetricsPlotterCallback(metrics_plot_path),
         MetricsSaverCallback(metrics_yaml_path),
@@ -92,8 +92,7 @@ def create_callbacks(
         SaveModelCheckpoint(name="best_G", metric="G_loss", **ckpt_saver_params),
         SaveModelCheckpoint(name="best_D", metric="D_loss", **ckpt_saver_params),
         SaveModelCheckpoint(name="last", last=True, top_k=0, **ckpt_saver_params),
-        GeneratorExamplesPlotterCallback("val", val_examples_path, inverse_preprocessing),
-        GeneratorExamplesPlotterCallback("train", train_examples_path, inverse_preprocessing),
+        GeneratorExamplesPlotterCallback("val", str(examples_dirpath)),
     ]
     if ckpt_path is not None:
         callbacks.append(LoadModelCheckpoint(ckpt_path))
@@ -137,12 +136,7 @@ def main() -> None:
 
     logger = TerminalLogger(CFG["logs_path"], config=CFG)
 
-    callbacks = create_callbacks(
-        logger,
-        train_transform.inverse_preprocessing,
-        CFG["input_size"],
-        CFG.get("ckpt_path", None),
-    )
+    callbacks = create_callbacks(logger, CFG["input_size"], CFG.get("ckpt_path", None))
 
     trainer = Trainer(
         logger=logger,
