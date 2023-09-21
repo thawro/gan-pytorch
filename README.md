@@ -57,3 +57,8 @@ https://github.com/thawro/gan-pytorch/assets/50373360/f91a2ecc-2434-4f1c-8312-17
 #### Generated examples
 https://github.com/thawro/gan-pytorch/assets/50373360/f9931527-45ec-4cf9-9c3f-a8e48eebe62a
 
+#### Interpolation of latent variable
+For each latent dimension `latent_dim` a new **`z`** noise was sampled from gaussian distribution and `z[latent_dim]` was then interpolated between `-3.5` and `3.5`
+
+![CelebA_dcgan](https://github.com/thawro/gan-pytorch/assets/50373360/0b78f5b6-0c12-4397-8194-f7048dadad64)
+
