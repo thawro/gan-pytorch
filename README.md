@@ -27,7 +27,8 @@ GAN based on [Unsupervised Representation Learning with Deep Convolutional Gener
 ![dcgan_metrics](./plots/dcgan/metrics.jpg)
 
 ### Examples of generated images
-![dcgan_examples](./plots/dcgan/examples.png)
+https://github.com/thawro/gan-pytorch/assets/50373360/337e2b91-ea26-4ac6-b79d-e5d126780c59
+
 
 
 # CelebA dataset experiments
