@@ -31,3 +31,5 @@ https://github.com/thawro/gan-pytorch/assets/50373360/337e2b91-ea26-4ac6-b79d-e5
 ![conditional_dcgan_metrics](./plots/conditional_dcgan/metrics.jpg)
 
 ### Examples of generated images (each row is conditioned with specific digit)
+https://github.com/thawro/gan-pytorch/assets/50373360/79e9d0b0-c291-4d47-835b-19b28bcff0b2
+
