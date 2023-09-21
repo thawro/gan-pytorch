@@ -1,7 +1,8 @@
 """Train the model"""
 
 import torch
-from typing import Callable
+from functools import partial
+
 from torch import nn
 from src.data import DataModule, MNISTDataset
 from src.data.transforms import DataTransform
@@ -19,11 +20,13 @@ from src.model.architectures import (
     GANDiscriminator,
     DCGANGenerator,
     DCGANDiscriminator,
+    ConditionalDCGANGenerator,
+    ConditionalDCGANDiscriminator,
 )
-from src.model.gan import GANModel
+from src.model.gan import GANModel, ConditionalGANModel
 
 from src.model.loss import GANLoss, WeightedLoss
-from src.model.module import Trainer, GANModule
+from src.model.module import Trainer, GANModule, ConditionalGANModule
 from src.model.utils import seed_everything
 
 from src.utils import DS_ROOT, NOW, ROOT
@@ -40,19 +43,24 @@ CFG = {
     "image_channels": 1,
     "transform": {"mean": 0.5, "std": 0.5, "image_size": image_size},
     "max_epochs": 500,
-    "batch_size": 128,
+    "batch_size": 100,
     "device": "cuda",
     "limit_batches": -1,
-    "gan_type": "dcgan",
+    "gan_type": "conditional_dcgan",
+    "n_classes": 10,
 }
 
 CFG["image_shape"] = (CFG["image_channels"], CFG["image_size"], CFG["image_size"])
-CFG["input_size"] = (1, CFG["latent_dim"])
+
+if CFG["gan_type"] in ["gan", "dcgan"]:
+    CFG["input_size"] = (1, CFG["latent_dim"])
+elif CFG["gan_type"] in ["conditional_dcgan"]:
+    CFG["input_size"] = [(1, CFG["latent_dim"]), (1,)]
 
 if CFG["limit_batches"] != -1:
     EXPERIMENT_NAME = "debug"
 
-RUN_NAME = f"{CFG['gan_type']}_{NOW}"
+RUN_NAME = f"{CFG['gan_type']}/{NOW}"
 CFG["logs_path"] = str(ROOT / "results" / EXPERIMENT_NAME / RUN_NAME)
 
 
@@ -113,6 +121,35 @@ def create_dcgan_model(latent_dim: int, image_shape: tuple[int, ...]) -> GANMode
     return GANModel(generator, discriminator)
 
 
+def create_conditional_dcgan_model(
+    latent_dim: int, image_shape: tuple[int, ...], n_classes: int
+) -> ConditionalGANModel:
+    mid_channels = 64
+    img_channels = image_shape[0]
+    generator = ConditionalDCGANGenerator(n_classes, latent_dim, mid_channels, img_channels)
+    discriminator = ConditionalDCGANDiscriminator(
+        n_classes, img_channels, mid_channels, input_size=image_shape
+    )
+    return ConditionalGANModel(generator, discriminator)
+
+
+def create_module(
+    gan_type: str, latent_dim: int, image_shape: tuple[int, ...]
+) -> GANModule | ConditionalGANModule:
+    if gan_type == "gan":
+        create_model = create_gan_model
+        Module = GANModule
+    elif gan_type == "dcgan":
+        create_model = create_dcgan_model
+        Module = GANModule
+    elif gan_type == "conditional_dcgan":
+        create_model = partial(create_conditional_dcgan_model, n_classes=CFG["n_classes"])
+        Module = ConditionalGANModule
+    model = create_model(latent_dim, image_shape)
+    model.apply(weights_init)
+    return Module(model, loss_fn=GANLoss(WeightedLoss(nn.BCELoss())))
+
+
 def main() -> None:
     seed_everything(CFG["seed"])
     torch.set_float32_matmul_precision("medium")
@@ -122,17 +159,7 @@ def main() -> None:
 
     datamodule = create_datamodule(ds_path, train_transform, inference_transform, CFG["batch_size"])
 
-    if CFG["gan_type"] == "gan":
-        create_model = create_gan_model
-    elif CFG["gan_type"] == "dcgan":
-        create_model = create_dcgan_model
-    else:
-        raise ValueError()
-
-    model = create_model(CFG["latent_dim"], CFG["image_shape"])
-    model.apply(weights_init)
-
-    module = GANModule(model=model, loss_fn=GANLoss(WeightedLoss(nn.BCELoss())))
+    module = create_module(CFG["gan_type"], CFG["latent_dim"], CFG["image_shape"])
 
     logger = TerminalLogger(CFG["logs_path"], config=CFG)
 

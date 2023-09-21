@@ -2,17 +2,13 @@
 Implemented models:
 * [GAN](https://arxiv.org/abs/1406.2661)
 * [DCGAN](https://arxiv.org/abs/1511.06434)
-
-Analysed datasets:
-* [MNIST](http://yann.lecun.com/exdb/mnist/)
-* [CelebA](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html)
+* [Conditional DCGAN](https://arxiv.org/abs/1411.1784)
 
 
 # MNIST dataset experiments
 
-## GAN
+## GAN ([paper](https://arxiv.org/abs/1406.2661))
 
-Simple GAN based on [Generative Adversarial Nets](https://arxiv.org/abs/1406.2661) paper
 ### Learning curves
 ![gan_metrics](./plots/gan/metrics.jpg)
 
@@ -20,9 +16,8 @@ Simple GAN based on [Generative Adversarial Nets](https://arxiv.org/abs/1406.266
 https://github.com/thawro/gan-pytorch/assets/50373360/c420da6a-f517-4e50-b123-f59d317e164b
 
 
-## DCGAN
+## DCGAN ([paper](https://arxiv.org/abs/1511.06434))
 
-GAN based on [Unsupervised Representation Learning with Deep Convolutional Generative Adversarial Networks](https://arxiv.org/abs/1511.06434) paper
 ### Learning curves
 ![dcgan_metrics](./plots/dcgan/metrics.jpg)
 
@@ -30,5 +25,9 @@ GAN based on [Unsupervised Representation Learning with Deep Convolutional Gener
 https://github.com/thawro/gan-pytorch/assets/50373360/337e2b91-ea26-4ac6-b79d-e5d126780c59
 
 
+## Conditional DCGAN ([paper](https://arxiv.org/abs/1411.1784))
 
-# CelebA dataset experiments
+### Learning curves
+![conditional_dcgan_metrics](./plots/conditional_dcgan/metrics.jpg)
+
+### Examples of generated images (each row is conditioned with specific digit)

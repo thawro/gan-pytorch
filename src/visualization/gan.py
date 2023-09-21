@@ -17,7 +17,8 @@ def plot_generator_results(results: GANResult, filepath: str | None, title: str)
     plt.title(title)
     plt.imshow(
         np.transpose(
-            vutils.make_grid(results.gen_imgs[:64], padding=2, normalize=True).cpu(), (1, 2, 0)
+            vutils.make_grid(results.gen_imgs[:100], nrow=10, padding=2, normalize=True).cpu(),
+            (1, 2, 0),
         )
     )
 
