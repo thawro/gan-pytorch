@@ -36,14 +36,14 @@ CFG = {
     "seed": 42,
     "dataset": "MNIST",
     "latent_dim": 100,
-    "image_size": (image_size := 28),
+    "image_size": (image_size := 64),
     "image_channels": 1,
     "transform": {"mean": 0.5, "std": 0.5, "image_size": image_size},
     "max_epochs": 500,
     "batch_size": 128,
     "device": "cuda",
     "limit_batches": -1,
-    "gan_type": "gan",
+    "gan_type": "dcgan",
 }
 
 CFG["image_shape"] = (CFG["image_channels"], CFG["image_size"], CFG["image_size"])
